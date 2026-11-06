@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, Sparkles, Calendar, MapPin } from 'lucide-react';
-import { Wish } from '../types/wish';
-import { BALLOON_COLOR_MAP } from '../data/mockWishes';
+import { X, Heart, Sparkles, Calendar, MapPin, Clock } from 'lucide-react';
+import { WishWithTimer } from '../types/wish';
+import { getBalloonColorConfig } from '../data/mockWishes';
 
 interface WishDetailModalProps {
-  wish: Wish | null;
+  wish: WishWithTimer | null;
   onClose: () => void;
   onCheer: (id: string) => void;
 }
@@ -18,13 +18,12 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
 
   if (!wish) return null;
 
-  const colorConfig = BALLOON_COLOR_MAP[wish.balloonColor] || BALLOON_COLOR_MAP.pink;
+  const colorConfig = getBalloonColorConfig(wish.balloon_color);
 
   const handleCheerClick = () => {
     onCheer(wish.id);
     setIsCheered(true);
 
-    // 하트 팝 효과
     const newPop = {
       id: Date.now() + Math.random(),
       x: (Math.random() - 0.5) * 40,
@@ -37,16 +36,25 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
     }, 1000);
   };
 
+  const createdFormatted = wish.created_at
+    ? new Date(wish.created_at).toLocaleString('ko-KR', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* 어두운 배경 오버레이 */}
+        {/* 배경 오버레이 */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-slate-950/75 backdrop-blur-md"
+          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
         />
 
         {/* 팝업 카드 */}
@@ -79,7 +87,7 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
           <div className="flex items-center gap-2 mb-4">
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800/80 border border-slate-700 text-slate-300">
               <MapPin size={12} className="text-violet-400" />
-              {wish.countryName}
+              {wish.country_name}
             </span>
             <span
               className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 border"
@@ -90,7 +98,7 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
               }}
             >
               <Sparkles size={11} />
-              {colorConfig.name} 풍선
+              {colorConfig.name}
             </span>
           </div>
 
@@ -105,18 +113,21 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
             </div>
           </div>
 
-          {/* 작성일 정보 */}
+          {/* 작성일 및 남은 시간 카운트다운 */}
           <div className="flex items-center justify-between text-xs text-slate-400 mb-6 px-1">
             <div className="flex items-center gap-1.5">
               <Calendar size={13} />
-              <span>{wish.createdAt} 띄움</span>
+              <span>{createdFormatted} 띄움</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-950/40 border border-amber-500/30 text-amber-300 font-mono text-[11px]">
+              <Clock size={12} className="text-amber-400" />
+              <span>터지기까지 {wish.remainingTimeFormatted}</span>
             </div>
           </div>
 
           {/* 액션 버튼 영역 */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              {/* 날아오르는 하트 애니메이션 */}
               {heartPops.map((pop) => (
                 <motion.div
                   key={pop.id}
@@ -139,7 +150,7 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
                 />
                 <span>소원 응원하기</span>
                 <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-bold ml-1">
-                  {wish.cheerCount}
+                  {wish.cheer_count ?? 0}
                 </span>
               </button>
             </div>
@@ -149,4 +160,3 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
     </AnimatePresence>
   );
 }
-

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ComposableMap,
@@ -8,18 +8,21 @@ import {
   Geography,
   ZoomableGroup,
 } from 'react-simple-maps';
-import { Sparkles, Globe, Compass } from 'lucide-react';
-import { Wish, CountryInfo } from '../types/wish';
-import { resolveCountry, KNOWN_COUNTRIES } from '../data/mockWishes';
+import { Sparkles, Globe, Compass, Coffee } from 'lucide-react';
+import { CountryInfo } from '../types/wish';
+import { resolveCountry, KNOWN_COUNTRIES, INITIAL_WISHES } from '../data/mockWishes';
+import { getWishCountByCountries } from '../lib/supabase';
+import DonationModal from './DonationModal';
 
 const GEO_URL = 'https://unpkg.com/world-atlas@2.0.2/countries-110m.json';
 
 interface WorldMapViewProps {
-  wishes: Wish[];
   onSelectCountry: (country: { code: string; name: string }) => void;
 }
 
-export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewProps) {
+export default function WorldMapView({ onSelectCountry }: WorldMapViewProps) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [isDonationOpen, setIsDonationOpen] = useState(false);
   const [tooltip, setTooltip] = useState<{
     country: CountryInfo;
     wishCount: number;
@@ -27,12 +30,36 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
     y: number;
   } | null>(null);
 
-  // 국가별 소원 수 계산
+  // 12시간 이내의 국가별 소원 수 집계 로드
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCounts = async () => {
+      try {
+        const data = await getWishCountByCountries();
+        if (isMounted) {
+          const merged: Record<string, number> = { ...data };
+          INITIAL_WISHES.forEach((w) => {
+            if (!merged[w.country_code]) {
+              merged[w.country_code] = (merged[w.country_code] || 0) + 1;
+            }
+          });
+          setCounts(merged);
+        }
+      } catch (err) {
+        console.warn('Failed to load country counts:', err);
+      }
+    };
+
+    fetchCounts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const getWishCount = (code: string) => {
-    return wishes.filter((w) => w.countryCode === code).length;
+    return counts[code?.toUpperCase()] || 0;
   };
 
-  // 인기/등록된 국가 칩
   const quickCountries = [
     KNOWN_COUNTRIES.KR,
     KNOWN_COUNTRIES.JP,
@@ -48,10 +75,23 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
         transition={{ duration: 0.8, ease: 'easeOut' }}
         className="text-center max-w-2xl mx-auto pt-4 pb-2 z-20"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/70 text-violet-300 text-xs font-semibold mb-3 backdrop-blur-md shadow-lg shadow-violet-950/30">
-          <Sparkles size={13} className="text-violet-400 animate-pulse" />
-          <span>전 세계의 소원이 모이는 밤하늘</span>
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/70 text-violet-300 text-xs font-semibold backdrop-blur-md shadow-lg shadow-violet-950/30">
+            <Sparkles size={13} className="text-violet-400 animate-pulse" />
+            <span>전 세계 12시간의 소원이 모이는 밤하늘</span>
+          </div>
+
+          {/* 후원하기 버튼 */}
+          <button
+            onClick={() => setIsDonationOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 transition-all shadow-md active:scale-95"
+            title="소원하늘 응원하기"
+          >
+            <Coffee size={13} className="text-amber-300" />
+            <span>커피 선물</span>
+          </button>
         </div>
+
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-violet-200 via-indigo-100 to-pink-200 bg-clip-text text-transparent">
           소원하늘 <span className="text-xl md:text-2xl font-light text-violet-300/80">SowonSky</span>
         </h1>
@@ -59,7 +99,7 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
           하늘을 올려다볼 나라를 선택해보세요
         </p>
 
-        {/* 바로가기 국가 칩 */}
+        {/* 빠른 바로가기 국가 칩 */}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <span className="text-xs text-slate-500 mr-1 flex items-center gap-1">
             <Compass size={12} /> 빠른 이동:
@@ -90,7 +130,6 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
         transition={{ duration: 1, ease: 'easeOut' }}
         className="relative w-full max-w-5xl my-auto py-2 flex items-center justify-center"
       >
-        {/* 지도 뒷배경 링 오라 */}
         <div className="absolute inset-0 bg-radial-gradient from-indigo-900/10 via-transparent to-transparent pointer-events-none rounded-full blur-2xl" />
 
         <div className="w-full aspect-[1.8/1] max-h-[580px] rounded-3xl bg-slate-900/40 border border-slate-800/80 shadow-2xl backdrop-blur-xl p-2 sm:p-4 overflow-hidden relative">
@@ -192,7 +231,7 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
                   <span>{tooltip.country.name}</span>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-violet-300 font-medium">
-                  <span>🎈 떠있는 소원:</span>
+                  <span>🎈 12시간 이내 뜬 소원:</span>
                   <span className="font-bold text-amber-300">{tooltip.wishCount}개</span>
                 </div>
               </div>
@@ -201,7 +240,7 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
         </div>
       </motion.div>
 
-      {/* 하단 푸터 / 안내 */}
+      {/* 하단 푸터 */}
       <motion.footer
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -209,9 +248,15 @@ export default function WorldMapView({ wishes, onSelectCountry }: WorldMapViewPr
         className="text-center text-xs text-slate-500 py-2 flex items-center justify-center gap-2"
       >
         <Globe size={14} className="text-slate-600" />
-        <span>지도의 나라를 클릭하면 해당 국가 상공의 소원들을 만날 수 있습니다.</span>
+        <span>지도의 나라를 클릭하면 해당 국가 상공의 실시간 소원하늘로 이동합니다.</span>
       </motion.footer>
+
+      {/* 후원 모달 */}
+      <DonationModal
+        isOpen={isDonationOpen}
+        onClose={() => setIsDonationOpen(false)}
+        reason="GENERAL"
+      />
     </div>
   );
 }
-

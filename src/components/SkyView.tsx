@@ -1,33 +1,35 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sparkles, Plus } from 'lucide-react';
-import { Wish, CountryInfo } from '../types/wish';
+import { ArrowLeft, Sparkles, Plus, Loader2, Coffee } from 'lucide-react';
+import { WishWithTimer, CountryInfo } from '../types/wish';
 import Balloon from './Balloon';
+import WishDetailModal from './WishDetailModal';
+import WishWriteModal from './WishWriteModal';
+import DonationModal from './DonationModal';
 import { KNOWN_COUNTRIES } from '../data/mockWishes';
+import { useRealtimeWishes } from '../hooks/useRealtimeWishes';
 
 interface SkyViewProps {
   selectedCountry: { code: string; name: string };
-  wishes: Wish[];
   onBackToMap: () => void;
-  onOpenWriteModal: () => void;
-  onSelectWish: (wish: Wish) => void;
 }
 
-export default function SkyView({
-  selectedCountry,
-  wishes,
-  onBackToMap,
-  onOpenWriteModal,
-  onSelectWish,
-}: SkyViewProps) {
-  // 현재 국가의 소원 목록
-  const countryWishes = useMemo(() => {
-    return wishes.filter((w) => w.countryCode === selectedCountry.code);
-  }, [wishes, selectedCountry.code]);
+export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) {
+  const {
+    wishes,
+    poppingWishIds,
+    isLoading,
+    addWish,
+    cheerWish,
+  } = useRealtimeWishes(selectedCountry.code, selectedCountry.name);
 
-  // 국가 메타데이터 (국기 이모지 등)
+  const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+  const [donationReason, setDonationReason] = useState<'LIMIT_REACHED' | 'GENERAL'>('GENERAL');
+  const [selectedWish, setSelectedWish] = useState<WishWithTimer | null>(null);
+
   const countryInfo: CountryInfo =
     KNOWN_COUNTRIES[selectedCountry.code] || {
       code: selectedCountry.code,
@@ -36,19 +38,13 @@ export default function SkyView({
       englishName: selectedCountry.name,
     };
 
-  // 풍선 위치 및 애니메이션 타이밍 결정 (중복 겹침 최소화)
   const balloonConfigs = useMemo(() => {
-    return countryWishes.map((wish, index) => {
-      // 12% ~ 86% 사이에 균일 분산 + 의사 난수 지터
-      const slotWidth = 74 / Math.max(countryWishes.length, 1);
+    return wishes.map((wish, index) => {
+      const slotWidth = 74 / Math.max(wishes.length, 1);
       const baseX = 12 + index * slotWidth;
       const jitter = ((wish.id.charCodeAt(wish.id.length - 1) * 7) % 8) - 4;
       const xPercent = Math.min(88, Math.max(8, baseX + jitter));
-
-      // float duration (16s ~ 24s)
-      const duration = 16 + (wish.id.charCodeAt(0) % 9);
-
-      // delay (새로 추가된 첫 번째 항목은 0초로 즉시 출발)
+      const duration = 18 + (wish.id.charCodeAt(0) % 9);
       const delay = index === 0 ? 0.2 : (index * 2.8) % 12;
 
       return {
@@ -56,9 +52,15 @@ export default function SkyView({
         xPercent,
         duration,
         delay,
+        isPopping: poppingWishIds.has(wish.id),
       };
     });
-  }, [countryWishes]);
+  }, [wishes, poppingWishIds]);
+
+  const activeSelectedWish = useMemo(() => {
+    if (!selectedWish) return null;
+    return wishes.find((w) => w.id === selectedWish.id) || selectedWish;
+  }, [selectedWish, wishes]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden flex flex-col justify-between select-none">
@@ -78,7 +80,7 @@ export default function SkyView({
           <span>세계 지도로 돌아가기</span>
         </button>
 
-        {/* 현재 국가 타이틀 정보 */}
+        {/* 현재 국가 정보 */}
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
             <span className="text-xl sm:text-2xl">{countryInfo.flag}</span>
@@ -88,22 +90,42 @@ export default function SkyView({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 text-xs text-violet-300 font-medium">
             <Sparkles size={12} className="text-amber-300" />
-            <span>밤하늘에 떠오른 소원</span>
+            <span>12시간 이내 뜬 소원</span>
             <span className="font-bold text-amber-300 ml-0.5 bg-violet-950/80 px-2 py-0.2 rounded-full border border-violet-500/30">
-              {countryWishes.length}개
+              {wishes.length}개
             </span>
           </div>
         </div>
 
-        {/* 빈 공간 균형용 더미 또는 상단 미니 로고 */}
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-serif opacity-75">
-          <span>SowonSky</span>
+        {/* 우측 후원 버튼 & 실시간 배지 */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setDonationReason('GENERAL');
+              setIsDonationModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 transition-all shadow-md active:scale-95"
+            title="커피 한 잔 후원하기"
+          >
+            <Coffee size={13} className="text-amber-300" />
+            <span className="hidden sm:inline">커피 선물</span>
+          </button>
+
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>실시간</span>
+          </div>
         </div>
       </motion.header>
 
-      {/* 밤하늘 중앙 캔버스 영역: 풍선 띄우기 */}
+      {/* 밤하늘 중앙 캔버스 영역 */}
       <div className="relative flex-1 w-full h-full overflow-hidden">
-        {countryWishes.length === 0 ? (
+        {isLoading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-slate-400 gap-3">
+            <Loader2 className="w-7 h-7 animate-spin text-violet-400" />
+            <p className="text-sm font-light">밤하늘의 소원을 불러오고 있습니다...</p>
+          </div>
+        ) : wishes.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -113,7 +135,7 @@ export default function SkyView({
               🎈
             </div>
             <p className="text-lg font-semibold text-slate-200">
-              아직 {countryInfo.name}의 밤하늘에 띄워진 소원이 없어요.
+              최근 12시간 동안 {countryInfo.name}에 띄워진 소원이 없어요.
             </p>
             <p className="text-sm text-slate-400 mt-1 max-w-sm">
               우측 하단의 ‘소원 띄우기’ 버튼을 눌러 첫 번째 소원의 주인공이 되어보세요!
@@ -121,14 +143,15 @@ export default function SkyView({
           </motion.div>
         ) : (
           <AnimatePresence>
-            {balloonConfigs.map(({ wish, xPercent, duration, delay }) => (
+            {balloonConfigs.map(({ wish, xPercent, duration, delay, isPopping }) => (
               <Balloon
                 key={wish.id}
                 wish={wish}
-                onClick={onSelectWish}
+                onClick={(clicked) => setSelectedWish(clicked)}
                 floatDuration={duration}
                 delay={delay}
                 xPercent={xPercent}
+                isPopping={isPopping}
               />
             ))}
           </AnimatePresence>
@@ -140,7 +163,7 @@ export default function SkyView({
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
-          onClick={onOpenWriteModal}
+          onClick={() => setIsWriteModalOpen(true)}
           className="flex items-center gap-2.5 px-6 py-4 rounded-full font-bold text-slate-950 bg-gradient-to-r from-amber-200 via-pink-200 to-violet-300 hover:from-amber-100 hover:to-violet-200 shadow-[0_0_35px_rgba(251,191,36,0.4)] border border-white/60 transition-all duration-300"
         >
           <span className="text-xl">🎈</span>
@@ -148,7 +171,34 @@ export default function SkyView({
           <Plus size={18} className="stroke-[3]" />
         </motion.button>
       </div>
+
+      {/* 소원 상세 모달 */}
+      {activeSelectedWish && (
+        <WishDetailModal
+          wish={activeSelectedWish}
+          onClose={() => setSelectedWish(null)}
+          onCheer={(id) => cheerWish(id)}
+        />
+      )}
+
+      {/* 소원 작성 모달 */}
+      <WishWriteModal
+        isOpen={isWriteModalOpen}
+        onClose={() => setIsWriteModalOpen(false)}
+        onSubmit={addWish}
+        onOpenDonation={() => {
+          setDonationReason('LIMIT_REACHED');
+          setIsDonationModalOpen(true);
+        }}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* 커피 후원 모달 */}
+      <DonationModal
+        isOpen={isDonationModalOpen}
+        onClose={() => setIsDonationModalOpen(false)}
+        reason={donationReason}
+      />
     </div>
   );
 }
-

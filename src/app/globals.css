@@ -71,6 +71,17 @@ body {
   }
 }
 
+/* 에러 흔들림 애니메이션 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
 /* 스크롤바 커스텀 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -85,4 +96,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }
-
