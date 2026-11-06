@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sparkles, Plus, Loader2, Coffee } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, Loader2, Coffee, Volume2, VolumeX } from 'lucide-react';
 import { WishWithTimer, CountryInfo } from '../types/wish';
 import Balloon from './Balloon';
 import WishDetailModal from './WishDetailModal';
@@ -10,6 +10,7 @@ import WishWriteModal from './WishWriteModal';
 import DonationModal from './DonationModal';
 import { KNOWN_COUNTRIES } from '../data/mockWishes';
 import { useRealtimeWishes } from '../hooks/useRealtimeWishes';
+import { soundManager } from '../lib/soundEffects';
 
 interface SkyViewProps {
   selectedCountry: { code: string; name: string };
@@ -31,6 +32,16 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
   const [selectedWish, setSelectedWish] = useState<WishWithTimer | null>(null);
   const [sortBy, setSortBy] = useState<'latest' | 'cheer'>('latest');
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isSoundOn, setIsSoundOn] = useState(true);
+
+  useEffect(() => {
+    setIsSoundOn(soundManager.getSoundEnabled());
+  }, []);
+
+  const handleToggleSound = () => {
+    const next = soundManager.toggleSound();
+    setIsSoundOn(next);
+  };
 
   const countryInfo: CountryInfo =
     KNOWN_COUNTRIES[selectedCountry.code] || {
@@ -89,6 +100,7 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
   const handleWishSubmit = async (content: string, balloonColorHex: string) => {
     const res = await addWish(content, balloonColorHex);
     if (res.success) {
+      soundManager.playWishChime();
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 3000);
     }
@@ -154,8 +166,18 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
           </div>
         </div>
 
-        {/* 우측 후원 버튼 & 실시간 배지 */}
+        {/* 우측 사운드 토글 & 후원 버튼 & 실시간 배지 */}
         <div className="flex items-center gap-2">
+          {/* 사운드 ON/OFF 버튼 */}
+          <button
+            onClick={handleToggleSound}
+            className="p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/70 hover:border-violet-400/50 text-slate-300 hover:text-white transition-all shadow-md active:scale-95"
+            title={isSoundOn ? '소리 끄기' : '소리 켜기'}
+            aria-label="소리 토글"
+          >
+            {isSoundOn ? <Volume2 size={15} className="text-violet-300" /> : <VolumeX size={15} className="text-slate-500" />}
+          </button>
+
           <button
             onClick={() => {
               setDonationReason('GENERAL');
@@ -204,7 +226,10 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
               <Balloon
                 key={wish.id}
                 wish={wish}
-                onClick={(clicked) => setSelectedWish(clicked)}
+                onClick={(clicked) => {
+                  soundManager.playSelectSound();
+                  setSelectedWish(clicked);
+                }}
                 floatDuration={duration}
                 delay={delay}
                 xPercent={xPercent}
