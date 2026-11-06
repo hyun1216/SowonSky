@@ -109,43 +109,85 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
 
   return (
     <div className="relative w-full h-screen h-[100dvh] overflow-hidden flex flex-col justify-between select-none">
-      {/* 상단 네비게이션 바 */}
+      {/* 상단 네비게이션 바 (반응형 최적화) */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative z-30 flex items-center justify-between px-4 sm:px-8 py-5 bg-gradient-to-b from-slate-950/90 via-slate-950/50 to-transparent backdrop-blur-sm"
+        className="relative z-30 flex flex-col gap-2 px-3 sm:px-8 py-3 sm:py-5 bg-gradient-to-b from-slate-950/95 via-slate-950/70 to-transparent backdrop-blur-md"
       >
-        {/* 뒤로 가기 버튼 */}
-        <button
-          onClick={onBackToMap}
-          className="group flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-700/70 hover:border-violet-400/50 text-slate-300 hover:text-white transition-all duration-200 shadow-lg active:scale-95 text-xs sm:text-sm font-medium"
-        >
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-          <span>세계 지도로 돌아가기</span>
-        </button>
+        {/* 1행: 메인 바 (뒤로가기 - 국가명 - 액션 버튼) */}
+        <div className="flex items-center justify-between w-full">
+          {/* 뒤로 가기 버튼 (모바일: 콤팩트 아이콘 / PC: 텍스트 포함) */}
+          <button
+            onClick={onBackToMap}
+            className="group flex items-center gap-2 p-2 sm:px-4 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-violet-400/50 text-slate-300 hover:text-white transition-all shadow-md active:scale-95 text-xs sm:text-sm font-medium shrink-0"
+            title="세계 지도로 돌아가기"
+            aria-label="세계 지도로 돌아가기"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">세계 지도로 돌아가기</span>
+          </button>
 
-        {/* 현재 국가 정보 */}
-        <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl">{countryInfo.flag}</span>
-            <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)]">
+          {/* 중앙: 국가 타이틀 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2 text-center truncate">
+            <span className="text-lg sm:text-2xl shrink-0">{countryInfo.flag}</span>
+            <h1 className="text-base sm:text-2xl font-bold text-white tracking-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)] truncate">
               {countryInfo.name} 상공
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-violet-300 font-medium">
-            <Sparkles size={12} className="text-amber-300" />
-            <span>12시간 이내 뜬 소원</span>
-            <span className="font-bold text-amber-300 ml-0.5 bg-violet-950/80 px-2 py-0.2 rounded-full border border-violet-500/30">
+
+          {/* 우측: 사운드 토글 & 후원 버튼 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* 사운드 ON/OFF 버튼 */}
+            <button
+              onClick={handleToggleSound}
+              className="p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-violet-400/50 text-slate-300 hover:text-white transition-all shadow-md active:scale-95"
+              title={isSoundOn ? '소리 끄기' : '소리 켜기'}
+              aria-label="소리 토글"
+            >
+              {isSoundOn ? <Volume2 size={15} className="text-violet-300" /> : <VolumeX size={15} className="text-slate-500" />}
+            </button>
+
+            {/* 커피 선물 버튼 */}
+            <button
+              onClick={() => {
+                setDonationReason('GENERAL');
+                setIsDonationModalOpen(true);
+              }}
+              className="flex items-center gap-1 sm:gap-1.5 p-2 sm:px-3 sm:py-2 rounded-2xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 transition-all shadow-md active:scale-95"
+              title="커피 한 잔 후원하기"
+              aria-label="커피 선물"
+            >
+              <Coffee size={14} className="text-amber-300" />
+              <span className="hidden sm:inline">커피 선물</span>
+            </button>
+
+            {/* PC 전용 실시간 뱃지 */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>실시간</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2행: 서브 바 (12시간 소원 수 카운터 & 정렬 필터 칩) */}
+        <div className="flex items-center justify-center gap-2 sm:gap-3 w-full pt-0.5">
+          {/* 소원 카운트 뱃지 */}
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] sm:text-xs text-violet-300 font-medium shrink-0">
+            <Sparkles size={11} className="text-amber-300 shrink-0" />
+            <span className="hidden xs:inline">12시간 뜬 소원</span>
+            <span className="xs:hidden">소원</span>
+            <span className="font-bold text-amber-300 ml-0.5 bg-violet-950/80 px-1.5 py-0.2 rounded-full border border-violet-500/30">
               {wishes.length}개
             </span>
           </div>
 
           {/* 소원 정렬 필터 바 (최신순 / 인기순) */}
-          <div className="flex items-center gap-1 mt-2.5 p-0.5 rounded-full bg-slate-900/80 border border-slate-700/60 shadow-inner">
+          <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-slate-900/90 border border-slate-700/60 shadow-inner">
             <button
               onClick={() => setSortBy('latest')}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold transition-all ${
                 sortBy === 'latest'
                   ? 'bg-violet-600/90 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -155,7 +197,7 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
             </button>
             <button
               onClick={() => setSortBy('cheer')}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-semibold transition-all flex items-center gap-1 ${
                 sortBy === 'cheer'
                   ? 'bg-rose-500/90 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -163,36 +205,6 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
             >
               <span>❤️ 인기순</span>
             </button>
-          </div>
-        </div>
-
-        {/* 우측 사운드 토글 & 후원 버튼 & 실시간 배지 */}
-        <div className="flex items-center gap-2">
-          {/* 사운드 ON/OFF 버튼 */}
-          <button
-            onClick={handleToggleSound}
-            className="p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/70 hover:border-violet-400/50 text-slate-300 hover:text-white transition-all shadow-md active:scale-95"
-            title={isSoundOn ? '소리 끄기' : '소리 켜기'}
-            aria-label="소리 토글"
-          >
-            {isSoundOn ? <Volume2 size={15} className="text-violet-300" /> : <VolumeX size={15} className="text-slate-500" />}
-          </button>
-
-          <button
-            onClick={() => {
-              setDonationReason('GENERAL');
-              setIsDonationModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 hover:border-amber-400/60 text-xs font-semibold text-amber-300 transition-all shadow-md active:scale-95"
-            title="커피 한 잔 후원하기"
-          >
-            <Coffee size={13} className="text-amber-300" />
-            <span className="hidden sm:inline">커피 선물</span>
-          </button>
-
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>실시간</span>
           </div>
         </div>
       </motion.header>
@@ -242,16 +254,16 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
       </div>
 
       {/* 우하단 플로팅 액션 버튼 (FAB) */}
-      <div className="fixed bottom-8 right-8 z-40">
+      <div className="fixed bottom-5 right-5 sm:bottom-8 sm:right-8 z-40">
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           onClick={() => setIsWriteModalOpen(true)}
-          className="flex items-center gap-2.5 px-6 py-4 rounded-full font-bold text-slate-950 bg-gradient-to-r from-amber-200 via-pink-200 to-violet-300 hover:from-amber-100 hover:to-violet-200 shadow-[0_0_35px_rgba(251,191,36,0.4)] border border-white/60 transition-all duration-300"
+          className="flex items-center gap-2 sm:gap-2.5 px-4.5 py-3 sm:px-6 sm:py-4 rounded-full font-bold text-slate-950 bg-gradient-to-r from-amber-200 via-pink-200 to-violet-300 hover:from-amber-100 hover:to-violet-200 shadow-[0_0_35px_rgba(251,191,36,0.4)] border border-white/60 transition-all duration-300"
         >
-          <span className="text-xl">🎈</span>
-          <span className="text-sm sm:text-base tracking-wide">소원 띄우기</span>
-          <Plus size={18} className="stroke-[3]" />
+          <span className="text-lg sm:text-xl">🎈</span>
+          <span className="text-xs sm:text-base tracking-wide font-bold">소원 띄우기</span>
+          <Plus size={16} className="stroke-[3] sm:w-[18px] sm:h-[18px]" />
         </motion.button>
       </div>
 
