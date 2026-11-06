@@ -60,8 +60,14 @@ export function useRealtimeWishes(countryCode: string, countryName: string) {
       const now = Date.now();
 
       if (data && data.length > 0) {
-        const enriched = data.map((w) => attachTimerInfo(w, now)).filter((w) => !w.isExpired);
-        setWishes(enriched);
+        const enrichedDb = data.map((w) => attachTimerInfo(w, now)).filter((w) => !w.isExpired);
+        // DB 소원과 기본 소원을 함께 조화시켜 밤하늘이 항상 풍성하도록 보강
+        const dbContents = new Set(enrichedDb.map((w) => w.content));
+        const extraMocks = INITIAL_WISHES
+          .filter((w) => w.country_code === countryCode && !dbContents.has(w.content))
+          .map((w) => attachTimerInfo(w, now))
+          .filter((w) => !w.isExpired);
+        setWishes([...enrichedDb, ...extraMocks]);
       } else {
         const mockFallback = INITIAL_WISHES
           .filter((w) => w.country_code === countryCode)

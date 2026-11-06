@@ -62,22 +62,28 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
   }, [wishes, sortBy]);
 
   const balloonConfigs = useMemo(() => {
-    // 초기 화면 진입 시 풍선들이 화면 중간~하단에서 시작하여 맨 위까지 길게 비행하도록 설정
-    const initialYOffsets = [60, 85, 100, 70, 90, 105, 75, 95];
+    const totalCount = Math.max(sortedWishes.length, 1);
+    // 잔잔하고 몽환적인 비행 속도: 20초 ~ 24초 (기존보다 속도를 낮추어 오래 감상 가능)
+    const baseDuration = 22;
+
+    // 첫 진입 시 화면이 비어있지 않도록 상단(15vh)부터 하단(95vh)까지 고르게 분산
+    const initialYOffsets = [20, 55, 80, 35, 65, 90, 15, 45, 75, 105];
 
     return sortedWishes.map((wish, index) => {
-      const slotWidth = 74 / Math.max(sortedWishes.length, 1);
-      const baseX = 12 + index * slotWidth;
+      const slotWidth = 76 / totalCount;
+      const baseX = 10 + index * slotWidth;
       const jitter = ((wish.id.charCodeAt(wish.id.length - 1) * 7) % 8) - 4;
-      const xPercent = Math.min(86, Math.max(10, baseX + jitter));
+      const xPercent = Math.min(88, Math.max(8, baseX + jitter));
 
-      // 맨 위 끝까지 온전히 비행하는 적정 속도: 15초 ~ 18초
-      const duration = 15 + (wish.id.charCodeAt(0) % 4);
+      // 부드러운 체공 시간 (20s ~ 24s)
+      const duration = 20 + (wish.id.charCodeAt(0) % 5);
 
-      // 딜레이 최소화
-      const delay = index === 0 ? 0 : (index * 0.4) % 2;
+      // 순차적 시간차 분배 (Staggered Flow):
+      // 풍선들이 한 번에 우르르 올라가지 않고 약 2~2.8초 간격으로 꼬리를 물고 연속 상승
+      const staggerStep = Math.max(1.8, Math.min(3, baseDuration / totalCount));
+      const delay = index === 0 ? 0 : Number((index * staggerStep).toFixed(1));
 
-      // 새로 띄운 소원은 화면 맨 아래(105vh)에서 출발, 기존 소원들은 60~105vh에서 순차 출발
+      // 새로 띄운 소원은 화면 맨 아래(105vh)에서 출발, 기존 소원들은 화면 곳곳에서 즉시 유영
       const initialYPercent = index === 0 ? 105 : initialYOffsets[index % initialYOffsets.length];
 
       return {

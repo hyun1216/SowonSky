@@ -64,6 +64,8 @@ export default function WorldMapView({ onSelectCountry }: WorldMapViewProps) {
     KNOWN_COUNTRIES.KR,
     KNOWN_COUNTRIES.JP,
     KNOWN_COUNTRIES.US,
+    KNOWN_COUNTRIES.FR,
+    KNOWN_COUNTRIES.TW,
   ];
 
   return (
