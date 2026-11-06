@@ -29,6 +29,8 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
   const [donationReason, setDonationReason] = useState<'LIMIT_REACHED' | 'GENERAL'>('GENERAL');
   const [selectedWish, setSelectedWish] = useState<WishWithTimer | null>(null);
+  const [sortBy, setSortBy] = useState<'latest' | 'cheer'>('latest');
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const countryInfo: CountryInfo =
     KNOWN_COUNTRIES[selectedCountry.code] || {
@@ -38,32 +40,63 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
       englishName: selectedCountry.name,
     };
 
+  // 정렬된 소원 목록
+  const sortedWishes = useMemo(() => {
+    const list = [...wishes];
+    if (sortBy === 'cheer') {
+      return list.sort((a, b) => (b.cheer_count ?? 0) - (a.cheer_count ?? 0));
+    }
+    // 기본값: 최신순 (created_at 내림차순)
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [wishes, sortBy]);
+
   const balloonConfigs = useMemo(() => {
-    return wishes.map((wish, index) => {
-      const slotWidth = 74 / Math.max(wishes.length, 1);
+    // 초기 화면 진입 시 풍선들이 화면 중간~하단에서 시작하여 맨 위까지 길게 비행하도록 설정
+    const initialYOffsets = [60, 85, 100, 70, 90, 105, 75, 95];
+
+    return sortedWishes.map((wish, index) => {
+      const slotWidth = 74 / Math.max(sortedWishes.length, 1);
       const baseX = 12 + index * slotWidth;
       const jitter = ((wish.id.charCodeAt(wish.id.length - 1) * 7) % 8) - 4;
-      const xPercent = Math.min(88, Math.max(8, baseX + jitter));
-      const duration = 18 + (wish.id.charCodeAt(0) % 9);
-      const delay = index === 0 ? 0.2 : (index * 2.8) % 12;
+      const xPercent = Math.min(86, Math.max(10, baseX + jitter));
+
+      // 맨 위 끝까지 온전히 비행하는 적정 속도: 15초 ~ 18초
+      const duration = 15 + (wish.id.charCodeAt(0) % 4);
+
+      // 딜레이 최소화
+      const delay = index === 0 ? 0 : (index * 0.4) % 2;
+
+      // 새로 띄운 소원은 화면 맨 아래(105vh)에서 출발, 기존 소원들은 60~105vh에서 순차 출발
+      const initialYPercent = index === 0 ? 105 : initialYOffsets[index % initialYOffsets.length];
 
       return {
         wish,
         xPercent,
         duration,
         delay,
+        initialYPercent,
         isPopping: poppingWishIds.has(wish.id),
       };
     });
-  }, [wishes, poppingWishIds]);
+  }, [sortedWishes, poppingWishIds]);
 
   const activeSelectedWish = useMemo(() => {
     if (!selectedWish) return null;
     return wishes.find((w) => w.id === selectedWish.id) || selectedWish;
   }, [selectedWish, wishes]);
 
+  // 소원 날리기 성공 시 축하 모션 핸들러
+  const handleWishSubmit = async (content: string, balloonColorHex: string) => {
+    const res = await addWish(content, balloonColorHex);
+    if (res.success) {
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
+    }
+    return res;
+  };
+
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col justify-between select-none">
+    <div className="relative w-full h-screen h-[100dvh] overflow-hidden flex flex-col justify-between select-none">
       {/* 상단 네비게이션 바 */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -94,6 +127,30 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
             <span className="font-bold text-amber-300 ml-0.5 bg-violet-950/80 px-2 py-0.2 rounded-full border border-violet-500/30">
               {wishes.length}개
             </span>
+          </div>
+
+          {/* 소원 정렬 필터 바 (최신순 / 인기순) */}
+          <div className="flex items-center gap-1 mt-2.5 p-0.5 rounded-full bg-slate-900/80 border border-slate-700/60 shadow-inner">
+            <button
+              onClick={() => setSortBy('latest')}
+              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                sortBy === 'latest'
+                  ? 'bg-violet-600/90 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              최신순
+            </button>
+            <button
+              onClick={() => setSortBy('cheer')}
+              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                sortBy === 'cheer'
+                  ? 'bg-rose-500/90 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span>❤️ 인기순</span>
+            </button>
           </div>
         </div>
 
@@ -143,7 +200,7 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
           </motion.div>
         ) : (
           <AnimatePresence>
-            {balloonConfigs.map(({ wish, xPercent, duration, delay, isPopping }) => (
+            {balloonConfigs.map(({ wish, xPercent, duration, delay, initialYPercent, isPopping }) => (
               <Balloon
                 key={wish.id}
                 wish={wish}
@@ -151,6 +208,7 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
                 floatDuration={duration}
                 delay={delay}
                 xPercent={xPercent}
+                initialYPercent={initialYPercent}
                 isPopping={isPopping}
               />
             ))}
@@ -172,6 +230,24 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
         </motion.button>
       </div>
 
+      {/* 소원 날리기 성공 축하 토스트 */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+          >
+            <div className="px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-600 via-pink-600 to-amber-500 text-white font-bold text-sm shadow-2xl flex items-center gap-2 border border-white/30 backdrop-blur-md">
+              <span className="text-lg">✨</span>
+              <span>당신의 소원이 밤하늘로 떠올랐습니다!</span>
+              <span className="text-lg">🎈</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 소원 상세 모달 */}
       {activeSelectedWish && (
         <WishDetailModal
@@ -185,7 +261,7 @@ export default function SkyView({ selectedCountry, onBackToMap }: SkyViewProps) 
       <WishWriteModal
         isOpen={isWriteModalOpen}
         onClose={() => setIsWriteModalOpen(false)}
-        onSubmit={addWish}
+        onSubmit={handleWishSubmit}
         onOpenDonation={() => {
           setDonationReason('LIMIT_REACHED');
           setIsDonationModalOpen(true);

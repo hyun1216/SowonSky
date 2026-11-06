@@ -19,7 +19,6 @@ export default function DonationModal({
 
   // 후원 링크
   const bmacUrl = 'https://buymeacoffee.com/devom';
-  const tossUrl = 'https://toss.me/devom';
 
   return (
     <AnimatePresence>
@@ -81,36 +80,20 @@ export default function DonationModal({
             </p>
           </div>
 
-          {/* 송금 및 후원 버튼 리스트 */}
-          <div className="space-y-3 pt-2">
-            {/* Buy Me a Coffee 버튼 (메인) */}
+          {/* 후원 버튼 */}
+          <div className="pt-2">
+            {/* Buy Me a Coffee 버튼 (단독 메인) */}
             <a
               href={bmacUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-between py-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#FFDD00] via-[#FACC15] to-[#F59E0B] hover:brightness-105 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-amber-500/25 active:scale-[0.98] group"
+              className="w-full flex items-center justify-between py-4 px-6 rounded-2xl bg-gradient-to-r from-[#FFDD00] via-[#FACC15] to-[#F59E0B] hover:brightness-105 text-slate-950 font-bold text-sm sm:text-base transition-all shadow-lg shadow-amber-500/25 active:scale-[0.98] group"
             >
-              <div className="flex items-center gap-2.5">
-                <Coffee size={19} className="text-slate-950 stroke-[2.5]" />
-                <span>Buy Me a Coffee 후원하기</span>
+              <div className="flex items-center gap-3">
+                <Coffee size={21} className="text-slate-950 stroke-[2.5]" />
+                <span>Buy Me a Coffee로 응원하기</span>
               </div>
-              <ExternalLink size={16} className="text-slate-900 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-
-            {/* 토스 익명 송금 버튼 */}
-            <a
-              href={tossUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-between py-3.5 px-5 rounded-2xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 hover:border-blue-400/50 text-white font-medium text-sm transition-all shadow-md active:scale-[0.98] group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-bold bg-[#0064FF] text-white w-5 h-5 rounded-full flex items-center justify-center">
-                  t
-                </span>
-                <span>토스 익명 송금하기</span>
-              </div>
-              <ExternalLink size={15} className="text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform" />
+              <ExternalLink size={18} className="text-slate-900 group-hover:translate-x-0.5 transition-transform" />
             </a>
           </div>
 

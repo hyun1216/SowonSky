@@ -12,15 +12,17 @@ interface BalloonProps {
   floatDuration?: number;
   delay?: number;
   xPercent: number; // 5% ~ 90%
+  initialYPercent?: number; // 40 ~ 110
   isPopping?: boolean;
 }
 
 export default function Balloon({
   wish,
   onClick,
-  floatDuration = 20,
+  floatDuration = 16,
   delay = 0,
   xPercent,
+  initialYPercent = 105,
   isPopping = false,
 }: BalloonProps) {
   const colorConfig = getBalloonColorConfig(wish.balloon_color);
@@ -43,12 +45,10 @@ export default function Balloon({
           }}
           className="pointer-events-none select-none flex items-center justify-center"
         >
-          {/* 중앙 빛의 폭발 */}
           <div
             className="w-12 h-12 rounded-full blur-md animate-ping"
             style={{ backgroundColor: colorConfig.hex }}
           />
-          {/* 8방향 별가루 파티클 */}
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
             const rad = (angle * Math.PI) / 180;
             const dist = 45 + (i % 3) * 15;
@@ -73,10 +73,12 @@ export default function Balloon({
       ) : (
         <motion.div
           key={`float-${wish.id}`}
-          initial={{ y: '110vh', opacity: 0 }}
+          initial={{ y: `${initialYPercent}vh`, opacity: 0 }}
           animate={{
-            y: '-30vh',
-            opacity: [0, 1, 1, 0.95, 0],
+            // 화면 맨 위 끝 너머(-115vh)까지 온전히 비행
+            y: '-115vh',
+            // 비행 중 거의 내내 opacity 1 유지, 맨 위를 완전히 벗어날 때만 사라짐
+            opacity: [0, 1, 1, 1, 1, 0],
           }}
           exit={{ opacity: 0, scale: 0.5 }}
           transition={{
@@ -84,6 +86,7 @@ export default function Balloon({
             delay,
             repeat: Infinity,
             ease: 'linear',
+            times: [0, 0.05, 0.3, 0.8, 0.94, 1],
           }}
           style={{
             left: `${xPercent}%`,
@@ -97,29 +100,28 @@ export default function Balloon({
           {/* 살랑살랑 좌우 흔들리는 swaying 래퍼 */}
           <motion.div
             animate={{
-              x: [-12, 12, -8, 10, -12],
-              rotate: [-4, 5, -3, 4, -4],
+              x: [-10, 10, -6, 8, -10],
+              rotate: [-3, 4, -2, 3, -3],
             }}
             transition={{
-              duration: 5 + (wish.id.charCodeAt(wish.id.length - 1) % 4),
+              duration: 4.5 + (wish.id.charCodeAt(wish.id.length - 1) % 3),
               repeat: Infinity,
               ease: 'easeInOut',
             }}
-            whileHover={{ scale: 1.12, transition: { duration: 0.2 } }}
+            whileHover={{ scale: 1.08, transition: { duration: 0.2 } }}
             className="flex flex-col items-center"
           >
             {/* 풍선 본체 SVG */}
             <div className="relative">
               <svg
-                width="84"
-                height="102"
+                width="76"
+                height="92"
                 viewBox="0 0 84 102"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
-                className="filter drop-shadow-[0_10px_25px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.7)] transition-all duration-300"
+                className="filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.6)] group-hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.7)] transition-all duration-300"
               >
                 <defs>
-                  {/* 풍선 3D 구체형 그라데이션 */}
                   <radialGradient
                     id={`balloon-grad-${wish.id}`}
                     cx="35%"
@@ -128,16 +130,15 @@ export default function Balloon({
                     fx="28%"
                     fy="22%"
                   >
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
                     <stop offset="25%" stopColor={colorConfig.hex} stopOpacity="0.95" />
                     <stop offset="85%" stopColor={colorConfig.hex} stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#1E1B4B" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#0F172A" stopOpacity="0.4" />
                   </radialGradient>
 
-                  {/* 매듭 그라데이션 */}
                   <linearGradient id={`knot-grad-${wish.id}`} x1="0" y1="0" x2="1" y2="1">
                     <stop offset="0%" stopColor={colorConfig.hex} />
-                    <stop offset="100%" stopColor="#312E81" />
+                    <stop offset="100%" stopColor="#1E1B4B" />
                   </linearGradient>
                 </defs>
 
@@ -155,9 +156,9 @@ export default function Balloon({
                   ry="20"
                   transform="rotate(-25 28 30)"
                   fill="#FFFFFF"
-                  fillOpacity="0.35"
+                  fillOpacity="0.4"
                 />
-                <circle cx="22" cy="18" r="3.5" fill="#FFFFFF" fillOpacity="0.55" />
+                <circle cx="22" cy="18" r="3.5" fill="#FFFFFF" fillOpacity="0.6" />
 
                 {/* 매듭 (Knot) */}
                 <path
@@ -165,33 +166,30 @@ export default function Balloon({
                   fill={`url(#knot-grad-${wish.id})`}
                 />
 
-                {/* 풍선 실 (String) 곡선 */}
+                {/* 풍선 실 (String) */}
                 <path
-                  d="M42 95 Q38 108, 44 120 T40 138"
-                  stroke="rgba(226, 232, 240, 0.45)"
+                  d="M42 95 Q39 108, 43 118 T42 130"
+                  stroke="rgba(226, 232, 240, 0.55)"
                   strokeWidth="1.2"
                   fill="none"
-                  strokeDasharray="2 1"
                 />
               </svg>
-
-              {/* 소원 내용 미니 프리뷰 */}
-              <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[68px] text-center pointer-events-none px-1">
-                <p className="text-[10px] font-medium text-slate-900/90 line-clamp-2 leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                  {wish.content}
-                </p>
-              </div>
             </div>
 
-            {/* 하단 미니 배지: 남은 시간 카운트다운 & 응원 수 */}
-            <div className="mt-7 flex flex-col items-center gap-1">
-              <div className="flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-slate-700/60 shadow-lg text-[10px] text-slate-300 group-hover:border-violet-400/70 group-hover:text-white transition-colors">
-                <span className="text-rose-400">❤️</span>
-                <span className="font-semibold">{wish.cheer_count ?? 0}</span>
-                <span className="text-slate-600">|</span>
-                <Clock size={10} className="text-amber-400" />
-                <span className="font-mono text-[9px] text-amber-200">
-                  {wish.remainingTimeFormatted}
+            {/* 고대비 소원 카드 태그 (가독성 극대화) */}
+            <div className="mt-1 w-36 sm:w-44 p-2.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-[0_8px_20px_rgba(0,0,0,0.6)] backdrop-blur-md group-hover:border-violet-400/70 group-hover:bg-slate-900/95 transition-all duration-200">
+              <p className="text-xs sm:text-[13px] font-semibold text-slate-100 line-clamp-2 leading-snug tracking-tight text-center drop-shadow-sm">
+                {wish.content}
+              </p>
+
+              <div className="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-300">
+                <span className="flex items-center gap-1 font-medium">
+                  <span className="text-rose-400">❤️</span>
+                  <span className="text-white font-bold">{wish.cheer_count ?? 0}</span>
+                </span>
+                <span className="flex items-center gap-1 font-mono text-amber-300">
+                  <Clock size={10} className="text-amber-400" />
+                  <span>{wish.remainingTimeFormatted}</span>
                 </span>
               </div>
             </div>

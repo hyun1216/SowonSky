@@ -46,6 +46,7 @@ export function useRealtimeWishes(countryCode: string, countryName: string) {
   const [error, setError] = useState<string | null>(null);
 
   const countryCodeRef = useRef(countryCode);
+  const cheerLockRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     countryCodeRef.current = countryCode;
   }, [countryCode]);
@@ -258,8 +259,16 @@ export function useRealtimeWishes(countryCode: string, countryName: string) {
     }
   };
 
-  // 5. 응원하기 액션
+  // 5. 응원하기 액션 (중복 연타 및 다중 호출 방지 락 적용)
   const cheerWishAction = async (wishId: string): Promise<number> => {
+    if (cheerLockRef.current.has(wishId)) {
+      return 0;
+    }
+    cheerLockRef.current.add(wishId);
+    setTimeout(() => {
+      cheerLockRef.current.delete(wishId);
+    }, 600);
+
     let nextCount = 1;
 
     setWishes((prev) =>

@@ -14,6 +14,7 @@ interface WishDetailModalProps {
 
 export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailModalProps) {
   const [isCheered, setIsCheered] = useState(false);
+  const [isClicking, setIsClicking] = useState(false);
   const [heartPops, setHeartPops] = useState<{ id: number; x: number; y: number }[]>([]);
 
   if (!wish) return null;
@@ -21,6 +22,10 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
   const colorConfig = getBalloonColorConfig(wish.balloon_color);
 
   const handleCheerClick = () => {
+    // 중복 연타 및 더블 클릭 방지 (600ms 쿨다운)
+    if (isClicking) return;
+    setIsClicking(true);
+
     onCheer(wish.id);
     setIsCheered(true);
 
@@ -34,6 +39,10 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
     setTimeout(() => {
       setHeartPops((prev) => prev.filter((p) => p.id !== newPop.id));
     }, 1000);
+
+    setTimeout(() => {
+      setIsClicking(false);
+    }, 600);
   };
 
   const createdFormatted = wish.created_at
@@ -142,7 +151,8 @@ export default function WishDetailModal({ wish, onClose, onCheer }: WishDetailMo
 
               <button
                 onClick={handleCheerClick}
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-semibold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-400 hover:to-pink-500 shadow-lg shadow-rose-500/25 active:scale-95 transition-all duration-200"
+                disabled={isClicking}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl font-semibold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-400 hover:to-pink-500 shadow-lg shadow-rose-500/25 active:scale-95 transition-all duration-200 disabled:opacity-85"
               >
                 <Heart
                   size={19}
